@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🎉 Happy Birthday!</title>
+  <style>
+    :root{
+      --bg1:#8EC5FC; /* gradient colors */
+      --bg2:#E0C3FC;
+      --card:#ffffffee;
+      --text:#1f2937;
+      --accent:#ff4d6d;
+      --accent2:#7c3aed;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;
+      color:var(--text);
+      background:linear-gradient(135deg,var(--bg1),var(--bg2));
+      overflow:hidden;
+    }
+    .wrap{position:relative; height:100%; display:grid; place-items:center; padding:24px}
+
+    /* floating balloons */
+    .balloons{position:absolute; inset:0; overflow:hidden; pointer-events:none}
+    .balloon{position:absolute; bottom:-15vh; width:60px; height:80px; border-radius:50% 50% 45% 55%/55% 55% 45% 45%;
+      box-shadow:inset -8px -14px 20px #0001, 0 10px 20px #0002; opacity:.85;
+      animation:float var(--dur,16s) linear infinite; filter:saturate(1.1)
+    }
+    .balloon:after{content:""; position:absolute; bottom:-18px; left:50%; width:2px; height:22px; background:#0003}
+    @keyframes float{ to { transform:translateY(-125vh) translateX(var(--x,0)); } }
+
+    /* card */
+    .card{
+      position:relative; z-index:2; width:min(680px,92vw);
+      background:var(--card); backdrop-filter: blur(8px);
+      border-radius:24px; box-shadow: 0 20px 50px #0002, inset 0 1px 0 #fff7;
+      padding:28px 28px 22px; text-align:center;
+    }
+    h1{font-size:clamp(28px,5vw,46px); margin:8px 0 0}
+    h2{font-size:clamp(18px,3.8vw,24px); font-weight:500; margin:6px 0 18px; color:#374151}
+    .msg{font-size:clamp(16px,2.7vw,18px); line-height:1.5; margin:10px 0 20px}
+    .controls{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:6px 0 16px}
+    .controls input,.controls textarea{border:1px solid #0002; border-radius:14px; padding:10px 12px; font:inherit; outline:none; min-width:160px; background:#fff9}
+    .controls textarea{min-height:60px; width:min(440px,90vw); resize:vertical}
+    .btn{cursor:pointer; border:0; border-radius:999px; padding:12px 18px; font-weight:700; letter-spacing:.2px; background:linear-gradient(135deg,var(--accent),#ff9e00); color:#fff; box-shadow:0 10px 20px #0003}
+    .btn:active{transform:translateY(1px)}
+    .footer{font-size:13px; color:#4b5563; margin-top:14px}
+
+    /* confetti canvas over everything */
+    #confetti{position:fixed; inset:0; pointer-events:none; z-index:10}
+  </style>
+</head>
+<body>
+  <canvas id="confetti"></canvas>
+
+  <!-- floating balloons background -->
+  <div class="balloons" aria-hidden="true" id="balloons"></div>
+
+  <div class="wrap">
+    <div class="card">
+      <div style="font-size:40px">🎂🎈✨</div>
+      <h1 id="title">Happy Birthday, <span id="who">Dear</span>! 🎉</h1>
+      <h2 id="subtitle">Wishing you a day filled with joy, laughter, and sweet surprises.</h2>
+      <p class="msg" id="message">May your year ahead be as bright as your smile and as amazing as you are. Keep shining! 💖</p>
+
+      <div class="controls">
+        <input id="nameInput" placeholder="Recipient name" />
+        <input id="fromInput" placeholder="From (optional)" />
+        <textarea id="messageInput" placeholder="Custom message (optional)"></textarea>
+        <button class="btn" id="celebrateBtn">Celebrate 🎊</button>
+      </div>
+      <div class="footer" id="footer">Made with 💌 — edit the text and press Celebrate</div>
+    </div>
+  </div>
+
+  <audio id="song" preload="auto">
+    <source src="https://cdn.jsdelivr.net/gh/anars/blank-audio/1-second-of-silence.mp3" type="audio/mpeg" />
+  </audio>
+
+  <script>
+    // --- Utilities
+    const qs = (s)=>document.querySelector(s);
+
+    // Read name/message from query string if provided (e.g., ?name=Fahim&from=Me)
+    const url = new URL(location.href);
+    const nameQ = url.searchParams.get('name');
+    const fromQ = url.searchParams.get('from');
+    const msgQ  = url.searchParams.get('msg');
+    if(nameQ) qs('#who').textContent = decodeURIComponent(nameQ);
+    if(fromQ) qs('#footer').textContent = `From ${decodeURIComponent(fromQ)} — with love 💌`;
+    if(msgQ)  qs('#message').textContent = decodeURIComponent(msgQ);
+
+    // Inputs -> live update
+    const nameInput = qs('#nameInput');
+    const fromInput = qs('#fromInput');
+    const messageInput = qs('#messageInput');
+
+    nameInput.addEventListener('input',()=>{
+      qs('#who').textContent = nameInput.value || 'Friend';
+    });
+    fromInput.addEventListener('input',()=>{
+      qs('#footer').textContent = fromInput.value ? `From ${fromInput.value} — with love 💌` : 'Made with 💌 — edit the text and press Celebrate';
+    });
+    messageInput.addEventListener('input',()=>{
+      qs('#message').textContent = messageInput.value || 'May your year ahead be as bright as your smile and as amazing as you are. Keep shining! 💖';
+    });
+
+    // --- Balloons
+    const colors = ['#ff6b6b','#ffd93d','#6bcB77','#4d96ff','#b5179e','#ff9e00','#06d6a0'];
+    const balloons = qs('#balloons');
+    const balloonCount = 18;
+    for(let i=0;i<balloonCount;i++){
+      const b = document.createElement('div');
+      b.className='balloon';
+      const clr = colors[i % colors.length];
+      b.style.background = `radial-gradient( circle at 35% 35%, #fff8, ${clr})`;
+      b.style.left = Math.random()*100 + 'vw';
+      b.style.setProperty('--dur', (14+Math.random()*10)+'s');
+      b.style.setProperty('--x', (Math.random()*40-20)+'vw');
+      b.style.animationDelay = (Math.random()*-12)+'s';
+      balloons.appendChild(b);
+    }
+
+    // --- Simple Confetti
+    const canvas = qs('#confetti');
+    const ctx = canvas.getContext('2d');
+    let W, H, pieces = [];
+    function resize(){ W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
+    addEventListener('resize', resize); resize();
+
+    function spawnConfetti(count=220){
+      pieces.length = 0;
+      for(let i=0;i<count;i++){
+        pieces.push({
+          x: Math.random()*W,
+          y: -20 - Math.random()*H*0.4,
+          w: 6+Math.random()*6,
+          h: 10+Math.random()*12,
+          vx: -2+Math.random()*4,
+          vy: 2+Math.random()*3,
+          r: Math.random()*360,
+          vr: -6+Math.random()*12,
+          color: colors[Math.floor(Math.random()*colors.length)]
+        });
+      }
+    }
+
+    function step(){
+      ctx.clearRect(0,0,W,H);
+      for(const p of pieces){
+        p.x += p.vx; p.y += p.vy; p.r += p.vr;
+        p.vy += 0.02; // gravity
+        if(p.y>H+30) { p.y = -20; p.x = Math.random()*W; p.vy = 2+Math.random()*3; }
+        ctx.save();
+        ctx.translate(p.x,p.y); ctx.rotate(p.r*Math.PI/180);
+        ctx.fillStyle=p.color; ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+        ctx.restore();
+      }
+      requestAnimationFrame(step);
+    }
+
+    // Celebrate button
+    qs('#celebrateBtn').addEventListener('click',()=>{
+      spawnConfetti();
+      step();
+      // vibrate if supported
+      if(navigator.vibrate) navigator.vibrate([60,40,60]);
+    });
+
+    // Auto-start gentle confetti after 1s for delight
+    setTimeout(()=>{ spawnConfetti(120); step(); }, 1000);
+  </script>
+</body>
+</html>
